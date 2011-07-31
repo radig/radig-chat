@@ -1,5 +1,4 @@
 var sanitize = require('validator').sanitize;
-var uuid = require('node-uuid');
 
 var Db = require('mongodb').Db,
 	Connection = require('mongodb').Connection,
@@ -28,8 +27,7 @@ io.of('/chat').on('connection', function(socket) {
 	// requisição de conexão
 	socket.on('chat request', function(another) {
 		// cria uma sessão de chat e um id para a mesma
-		cid = String('_' + uuid());
-		cid.replace(/-/g, '_');
+		cid = '_' + new Date().getTime();
 		
 		ChatSessions[cid] = {participants: {}};
 		
