@@ -20,7 +20,7 @@
 	<script src="../libs/client/chatbox/jquery.ui.chatbox.js" type="text/javascript"></script>
 	<script src="../libs/client/chat-client.js" type="text/javascript"></script>
 	<script type="text/javascript">
-		var authKey = "<?php echo session_id(); ?>";
+		var authKey = "_<?php echo session_id(); ?>";
 	</script>
 </head>
 <body>
