@@ -1,104 +1,108 @@
-var config = {
-	host: '127.0.0.1',
-	channel: 'chat',
-	port: 8060,
-};
-
-var contact = {
-	id: null,
-	name: ''
-};
-
-var ChatSessions = {};
-
-var ContactList = {};
-
-function countChats() {
-	i = 0;
+var ChatClient = function() {
 	
-	for(a in ChatSessions)
-		i++;
+	this.settings = {
+		id: null,	
+		nickname: '',
+		host: '127.0.0.1',
+		channel: 'chat',
+		port: 8060
+	};
 	
-	return i;
-}
-
-Socket = io.connect( config.host + '/' + config.channel, {port: config.port, 'connect timout': 2000} );
-
-Socket.on('contact-list join', function(contact) {
-	addContact(contact);
-});
-
-Socket.on('contact-list quit', function(contact) {
-	removeContact(contact);
-});
-
-Socket.on('connect', function () {
-	contact.id = authKey;
+	this.sessions = {};
 	
-	Socket.emit('identification', contact);
-});
-
-Socket.on('new chat id', function(cid) {
-	ChatSessions[cid] = {participants: []};
-});
-
-Socket.on('open chat', function(cid, contacts) {
-	winTitle = "";
+	this.contacts = {};
 	
-	for(i in contacts) {
-		ChatSessions[cid].participants.push(contacts[i]);
+	this.contactsCount = 0;
+	
+	this.socket = null;
+	
+	this.connect = function() {
+		self = this;
 		
-		if(contact.id != contacts[i].id)
-			winTitle += contacts[i].name + " ";
-	}
-	
-	addChatBox(cid, winTitle);
-});
-
-Socket.on('user message', function(cid, msg) {
-	$("#chat_" + cid).chatbox("option", "boxManager").addMsg(msg.from, msg.content);
-});
-
-function sendMessage(cid, message) {
-	Socket.emit('chat message', cid, message);
-};
-
-function addChatBox(id, title) {
-	$('body').append('<div id="chat_' + id + '"></div>');
-	
-	$("#chat_" + id).chatbox({
-		id : "chat_" + id,
-		title : title,
-		width : 250,
-		offset: (250 + 20) * (countChats() - 1),
-		messageSent: function(id, author, msg) {
-			sendMessage(id, msg);
-			this.boxManager.addMsg(contact.name, msg);
-    	},
-    	boxClosed: function(id) {
-    		
-    	}
-	});
-}
-
-function addContact(contact) {
-	
-	ContactList[contact.id] = contact;
-	
-	$('body').append('<a href="#' + contact.id + '" class="chat-contact">' + contact.name + '</a>');
-	bt = $('a[href=#' + contact.id + ']');
-	
-	bt.button();
-	
-	bt.bind('click', function(e) {
-		console.log(e);
-		key = String($(this).attr('href')).substring(1);
+		self.socket = io.connect( config.host + '/' + config.channel, {port: config.port, 'connect timout': 2000} );
 		
-		Socket.emit('chat request', ContactList[key]);
-	});
-}
+		self.socket.on('contact-list join', function(contact) {
+			self.addContact(contact);
+		});
 
-function removeContact(contact) {
-	delete ContactList[contact.id];
-	$('a').remove('[href=#' + contact.id + ']');
-}
+		self.socket.on('contact-list quit', function(contact) {
+			self.removeContact(contact);
+		});
+
+		self.socket.on('connect', function () {
+			self.socket.emit('identification', {id: self.settings.id, name: self.settings.nickname});
+		});
+
+		self.socket.on('new chat id', function(id) {
+			self.sessions[id] = {participants: []};
+		});
+
+		self.socket.on('open chat', function(id, contacts) {
+			winTitle = "";
+			
+			for(i in self.contacts) {
+				self.sessions[id].participants.push(self.contacts[i]);
+				
+				if(self.settings.id != self.contacts[i].id)
+					winTitle += self.contacts[i].name + " ";
+			}
+			
+			self.addChatBox(id, winTitle);
+		});
+
+		self.socket.on('user message', function(id, msg) {
+			$("#chat_" + id).chatbox("option", "boxManager").addMsg(msg.from, msg.content);
+		});
+	};
+	
+	this.addContact = function(contact) {
+		self = this;
+		
+		self.contacts[contact.id] = contact;
+		self.contactsCount++;
+		
+		$('body').append('<a href="#' + contact.id + '" class="chat-contact">' + contact.name + '</a>');
+		bt = $('a[href=#' + contact.id + ']');
+		
+		bt.button();
+		
+		bt.bind('click', function(e) {
+			key = String($(this).attr('href')).substring(1);
+			
+			self.socket.emit('chat request', self.contacts[key]);
+		});
+	};
+	
+	this.removeContact = function(contact) {
+		self = this;
+		
+		delete self.contacts[contact.id];
+		self.contactsCount--;
+		
+		$('a').remove('[href=#' + contact.id + ']');
+	};
+	
+	this.addChatBox = function(cid, title) {
+		self = this;
+		
+		$('body').append('<div id="chat_' + cid + '"></div>');
+		
+		$("#chat_" + cid).chatbox({
+			id : "chat_" + cid,
+			title : title,
+			width : 250,
+			offset: (250 + 20) * (self.contactsCount - 1),
+			messageSent: function(id, author, msg) {
+				self.sendMessage(cid, msg);
+				this.boxManager.addMsg(self.settings.nickname, msg);
+	    	},
+	    	boxClosed: function(id) {
+	    		
+	    	}
+		});
+	};
+	
+	this.sendMessage = function(id, message) {
+		this.socket.emit('chat message', id, message);
+	};
+};

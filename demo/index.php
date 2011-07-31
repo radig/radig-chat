@@ -20,7 +20,19 @@
 	<script src="../libs/client/chatbox/jquery.ui.chatbox.js" type="text/javascript"></script>
 	<script src="../libs/client/chat-client.js" type="text/javascript"></script>
 	<script type="text/javascript">
-		var authKey = "_<?php echo session_id(); ?>";
+		var config = {
+			id: "_<?php echo session_id(); ?>",
+			nickname: 'Demo',
+			host: '127.0.0.1',
+			channel: 'chat',
+			port: 8060
+		};
+
+		var cc = new ChatClient();
+		cc.settings = config;
+
+		// Inicia chat cliente
+		cc.connect();
 	</script>
 </head>
 <body>

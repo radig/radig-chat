@@ -14,7 +14,6 @@ var io = require('socket.io').listen(8060);
 io.of('/chat').on('connection', function(socket) {
 	
 	socket.on('identification', function(info) {
-		
 		info.id = sanitize(info.id).xss();
 		info.name = sanitize(info.name).xss();
 		
@@ -29,7 +28,9 @@ io.of('/chat').on('connection', function(socket) {
 	// requisição de conexão
 	socket.on('chat request', function(another) {
 		// cria uma sessão de chat e um id para a mesma
-		cid = '_' . uuid();
+		cid = String('_' + uuid());
+		cid.replace(/-/g, '_');
+		
 		ChatSessions[cid] = {participants: {}};
 		
 		// Adiciona contato à lista de participantes do chat
@@ -62,6 +63,7 @@ io.of('/chat').on('connection', function(socket) {
 	// mensagem recebida
 	socket.on('chat message', function(chatId, msg) {
 		chatId = sanitize(chatId).xss();
+		
 		msg = sanitize(msg).xss();
 		
 		socket.get('me', function (err, info) {
@@ -79,9 +81,7 @@ io.of('/chat').on('connection', function(socket) {
 	});
 	
 	// quando o cliente é desconectado, o servidor tem de avisar a outra parte
-	socket.on('disconnect', function(chatId) {
-		chatId = sanitize(chatId).xss();
-		
+	socket.on('disconnect', function() {
 		/**
 		 * @todo veficar se não uma reconexão, caso
 		 * demore mais do que X segundos, daí notifica
