@@ -18,7 +18,7 @@
 	<script src="../libs/client/jquery-ui.min.js" type="text/javascript"></script>
 	
 	<script src="../libs/client/chatbox/jquery.ui.chatbox.js" type="text/javascript"></script>
-	<script src="../libs/client/chat-client.js" type="text/javascript"></script>
+	<script src="../libs/client/chat_client.js" type="text/javascript"></script>
 	<script type="text/javascript">
 		var config = {
 			id: "_<?php echo session_id(); ?>",
