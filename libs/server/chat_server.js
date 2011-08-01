@@ -131,15 +131,3 @@ var ChatServer = exports.ChatServer = function() {
 		self.messages.save(chatId, info.from, info.to, info.when, info.content);
 	};
 };
-
-var cs = new ChatServer();
-
-cs.settings.persistence = {
-	database: 'demo',
-	username: 'dotti',
-	password: 'senha'
-};
-
-cs.init();
-
-cs.start();

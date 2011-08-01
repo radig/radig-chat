@@ -1,0 +1,24 @@
+h1. Chat estilo GMail/Facebook feito em Node.js + Socket.io + jQuery + MongoDB
+
+h2. Apresentação
+
+h2. Instruções de uso
+
+h2. Copyright
+
+2011 - "Radig Soluções em TI":http://radig.com.br
+Todos os direitos reservados.
+
+h2. Licença
+
+Esse código é disponibilizado da forma que está, sem nehuma garantia
+explicita ou implicita.
+
+A licença que rege ele é  "MIT":http://www.opensource.org/licenses/mit-license.php
+Portanto você pode usa-lo, adapta-lo e redistribui-lo desde que mantendo a licença e
+os créditos originais.
+
+h2. @TODO
+
+* Documentação
+* Restrição de usuários logados
