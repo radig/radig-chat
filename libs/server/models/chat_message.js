@@ -35,7 +35,7 @@ var ChatMessage = exports.ChatMessage = function() {
 			host: 'localhost',
 			port: '27017',
 			database: 'default',
-			collection: 'default',
+			collection: 'chats',
 			username: false,
 			password: false
 		}
@@ -52,21 +52,25 @@ var ChatMessage = exports.ChatMessage = function() {
 	 * 
 	 */
 	this.connect = function() {
-		self = this;
+		var self = this;
 		
-		self.conn = new Db(this.settings.db.database, new Server(self.settings.db.host, self.settings.db.port, {}), {native_parser:true});
-		
+		self.conn = new Db(self.settings.db.database, new Server(self.settings.db.host, self.settings.db.port, {}), {native_parser:true});
+
 		self.conn.open(function(err, db) {
-			if(db === null)
-			{
+			if(db === null) {
 				console.log("ChatMessage: Não foi possível abrir o BD.");
 				console.log(err);
-				
-				return false;
 			}
-			
-			self.db = db;
+			else {
+				self.db = db;
+			}
 		});
+		
+		if(self.db === null) {
+			return false;
+		}
+		
+		return true;
 	};
 	
 	/**
@@ -75,7 +79,7 @@ var ChatMessage = exports.ChatMessage = function() {
 	 * 
 	 */
 	this.getLatests = function(chatSession, l) {
-		self = this;
+		var self = this;
 		msgs = null;
 		
 		// caso conexão ainda não tenha sido estabelecida, tenta estabeler uma
@@ -116,7 +120,7 @@ var ChatMessage = exports.ChatMessage = function() {
 	 * 
 	 */
 	this.save = function(chatSession, from, to, when, message) {
-		self = this;
+		var self = this;
 		
 		// caso conexão ainda não tenha sido estabelecida, tenta estabeler uma
 		if(self.db === null) {
@@ -130,8 +134,7 @@ var ChatMessage = exports.ChatMessage = function() {
 		}
 		
 		self.db.collection(self.settings.db.collection, function(err, collection) {
-			if(collection === null)
-			{
+			if(collection === null) {
 				console.log("ChatMessage: Não é possível acessar a coleção.");
 				console.log(err);
 					
