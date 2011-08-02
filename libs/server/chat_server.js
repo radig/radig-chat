@@ -6,7 +6,8 @@ var ChatServer = exports.ChatServer = function() {
 			database: 'default',
 			username: 'user',
 			password: 'senha'
-		}
+		},
+		authorization: null
 	};
 	
 	// lib socket.io
@@ -53,6 +54,12 @@ var ChatServer = exports.ChatServer = function() {
 			socket.on('identification', function(info) {
 				info.id = self.sanitize(info.id).xss();
 				info.name = self.sanitize(info.name).xss();
+				
+				if(self.authorize(info) === false) {
+					// força desconexão
+					socket.disconnect();
+					return;
+				}
 				
 				// caso o contato esteja na fila de timouts, o remove dela
 				if(typeof self.refreshing[socket.id] != 'undefined') {
@@ -136,19 +143,26 @@ var ChatServer = exports.ChatServer = function() {
 			socket.on('disconnect', function() {
 				
 				socket.get('me', function (err, info) {
-					self.refreshing[info.id] = new Date().getTime();
-					// @todo definir um timout pra função cleanupContacts
+					if(info !== null) {
+						self.refreshing[info.id] = new Date().getTime();
+					}
 				});
 			});
 		});
 	};
 	
+	/**
+	 * Persiste as mensagens trocadas
+	 */
 	this.persistMessage = function(chatId, info) {
 		var self = this;
 		
 		self.messages.save(chatId, info.from, info.to, info.when, info.content);
 	};
 	
+	/**
+	 * Limpa a lista de contatos, removendo os inativos (desconectados)
+	 */
 	this.clenaupContacts = function() {
 		var self = this;
 		
@@ -171,5 +185,18 @@ var ChatServer = exports.ChatServer = function() {
 				}
 			}
 		});
+	};
+	
+	/**
+	 * Verifica se o usuário conectado possuí permissão para
+	 * usar o chat
+	 */
+	this.authorize = function(user) {
+		
+		if(this.settings.authorization !== null) {
+			return this.settings.authorization(user);
+		}
+		
+		return true;
 	};
 };

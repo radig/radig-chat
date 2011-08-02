@@ -5,7 +5,12 @@ var ChatClient = function() {
 		nickname: '',
 		host: '127.0.0.1',
 		channel: 'chat',
-		port: 8060
+		port: 8060,
+		contactList: {
+			classes: 'contact-list-contact',
+			prepend: '',
+			pospend: ''
+		}
 	};
 	
 	this.sessions = {};
@@ -79,6 +84,8 @@ var ChatClient = function() {
 			key = String($(this).attr('href')).substring(1);
 			
 			self.socket.emit('chat request', self.contacts[key]);
+			
+			return false;
 		});
 	};
 	
