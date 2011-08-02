@@ -1,6 +1,7 @@
 var ChatServer = exports.ChatServer = function() {
 	this.settings = {
 		port: 8060,
+		contactTimout: 3000, // 3 seg
 		persistence: {
 			database: 'default',
 			username: 'user',
@@ -8,14 +9,22 @@ var ChatServer = exports.ChatServer = function() {
 		}
 	};
 	
+	// lib socket.io
 	this.io = null;
 	
+	// lib para "limpeza" das entradas
 	this.sanitize = null;
 	
+	// persistência das mensagens
 	this.messages = null;
 	
+	// contatos online
 	this.online = {};
 	
+	// contatos que estão temporiariamente? indisponíveis
+	this.refreshing = {};
+	
+	// sessões de chat abertas
 	this.sessions = {};
 	
 	this.init = function() {
@@ -45,12 +54,20 @@ var ChatServer = exports.ChatServer = function() {
 				info.id = self.sanitize(info.id).xss();
 				info.name = self.sanitize(info.name).xss();
 				
-				// associa a chave de sessão do usuário com ID socket
-				self.online[info.id] = {sid: socket.id, name: info.name};
+				// caso o contato esteja na fila de timouts, o remove dela
+				if(typeof self.refreshing[socket.id] != 'undefined') {
+					delete self.refreshing[socket.id];
+				}
+				
+				// caso o contato ainda não esteja registrado
+				if(typeof self.online[info.id] == 'undefined') {
+					// associa a chave de sessão do usuário com ID socket
+					self.online[info.id] = {socketId: socket.id, name: info.name};
+					
+					self.io.of('/chat').emit('contact-list join', info);
+				}
 				
 				socket.set('me', info);
-				
-				self.io.of('/chat').emit('contact-list join', info);
 			});
 			
 			// requisição de conexão
@@ -69,18 +86,18 @@ var ChatServer = exports.ChatServer = function() {
 				});
 				
 				socket.emit('new chat id', cid);
-				self.io.of('/chat').sockets[self.online[another.id].sid].emit('new chat id', cid);
+				self.io.of('/chat').sockets[self.online[another.id].socketId].emit('new chat id', cid);
 				
 				// avisa a outra parte que ele deve abrir uma janela de chat
 				socket.emit('open chat', cid, self.sessions[cid].participants);
-				self.io.of('/chat').sockets[self.online[another.id].sid].emit('open chat', cid, self.sessions[cid].participants);
+				self.io.of('/chat').sockets[self.online[another.id].socketId].emit('open chat', cid, self.sessions[cid].participants);
 			});
 			
 			socket.on('chat opened', function(chatId) {
 				chatId = self.sanitize(chatId).xss();
 				
 				for(i in self.sessions[chatId].participants) {
-					to = self.online[self.sessions[chatId].participants[i].id].sid;
+					to = self.online[self.sessions[chatId].participants[i].id].socketId;
 					if(to != socket.id) {
 						self.io.of('/chat').sockets[to].emit('chat ready', chatId);
 					}
@@ -96,30 +113,31 @@ var ChatServer = exports.ChatServer = function() {
 				socket.get('me', function (err, info) {
 					
 					// envia mensagem para todos os participantes
-					for(i in self.sessions[chatId].participants)
-					{
-						to = self.online[self.sessions[chatId].participants[i].id].sid;
+					for(i in self.sessions[chatId].participants) {
+						
+						to = self.online[self.sessions[chatId].participants[i].id].socketId;
 						
 						if(to != socket.id) {
 							self.io.of('/chat').sockets[to].emit('user message', chatId, {from: info.name, content: msg});
 							self.persistMessage(chatId, {from: info, to: self.online[self.sessions[chatId].participants[i].id], when: new Date(), content: msg});
 						}
-						else
-							self.persistMessage(chatId, {from: info, to: self.online[self.sessions[chatId].participants[i].id], when: new Date(), content: msg});
 					}
 				});
 			});
 			
+			// resposta à pedido de lista de contato
+			socket.on('contact-list request', function() {
+				for(i in self.online) {
+					socket.emit('contact-list join', {id: i, name: self.online[i].name});
+				}
+			});
+			
 			// quando o cliente é desconectado, o servidor tem de avisar a outra parte
 			socket.on('disconnect', function() {
-				/**
-				 * @todo veficar se não uma reconexão, caso
-				 * demore mais do que X segundos, daí notifica
-				 * os participantes que ele está indisponível
-				 */
 				
 				socket.get('me', function (err, info) {
-					self.io.of('/chat').emit('contact-list quit', info);
+					self.refreshing[info.id] = new Date().getTime();
+					// @todo definir um timout pra função cleanupContacts
 				});
 			});
 		});
@@ -129,5 +147,29 @@ var ChatServer = exports.ChatServer = function() {
 		var self = this;
 		
 		self.messages.save(chatId, info.from, info.to, info.when, info.content);
+	};
+	
+	this.clenaupContacts = function() {
+		var self = this;
+		
+		var Timer = require('timerjs').Timer;
+		var timer = new Timer(2000);
+
+		timer.addListener('timer', function () {
+			var current = new Date().getTime();
+			var init = 0;
+			
+			for(i in self.refreshing) {
+				
+				init = self.refreshing[i];
+				
+				if(init + self.settings.contactTimout >= current) {
+					self.io.of('/chat').emit('contact-list quit', {id: i});
+					
+					delete self.online[i];
+					delete self.refreshing[i];
+				}
+			}
+		});
 	};
 };

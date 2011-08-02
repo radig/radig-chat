@@ -12,31 +12,39 @@ var ChatClient = function() {
 	
 	this.contacts = {};
 	
-	this.contactsCount = 0;
+	this.sessionsCount = 0;
 	
 	this.socket = null;
 	
 	this.connect = function() {
-		self = this;
+		var self = this;
 		
 		self.socket = io.connect( config.host + '/' + config.channel, {port: config.port, 'connect timout': 2000} );
 		
+		// requisita contatos
+		self.socket.emit('contact-list request');
+		
+		// trata entrada de novo contato
 		self.socket.on('contact-list join', function(contact) {
 			self.addContact(contact);
 		});
 
+		// saída de um contato
 		self.socket.on('contact-list quit', function(contact) {
 			self.removeContact(contact);
 		});
 
+		// identificação do cliente
 		self.socket.on('connect', function () {
 			self.socket.emit('identification', {id: self.settings.id, name: self.settings.nickname});
 		});
 
+		// criação de nova sessão chat
 		self.socket.on('new chat id', function(id) {
 			self.sessions[id] = {participants: []};
 		});
 
+		// pedido de abertura de nova janela
 		self.socket.on('open chat', function(id, contacts) {
 			winTitle = "";
 			
@@ -47,19 +55,20 @@ var ChatClient = function() {
 					winTitle += self.contacts[i].name + " ";
 			}
 			
+			self.sessionsCount++;
 			self.addChatBox(id, winTitle);
 		});
-
+		
+		// mensagem vinda
 		self.socket.on('user message', function(id, msg) {
 			$("#chat_" + id).chatbox("option", "boxManager").addMsg(msg.from, msg.content);
 		});
 	};
 	
 	this.addContact = function(contact) {
-		self = this;
+		var self = this;
 		
 		self.contacts[contact.id] = contact;
-		self.contactsCount++;
 		
 		$('body').append('<a href="#' + contact.id + '" class="chat-contact">' + contact.name + '</a>');
 		bt = $('a[href=#' + contact.id + ']');
@@ -74,16 +83,15 @@ var ChatClient = function() {
 	};
 	
 	this.removeContact = function(contact) {
-		self = this;
+		var self = this;
 		
 		delete self.contacts[contact.id];
-		self.contactsCount--;
 		
 		$('a').remove('[href=#' + contact.id + ']');
 	};
 	
 	this.addChatBox = function(cid, title) {
-		self = this;
+		var self = this;
 		
 		$('body').append('<div id="chat_' + cid + '"></div>');
 		
@@ -91,13 +99,13 @@ var ChatClient = function() {
 			id : "chat_" + cid,
 			title : title,
 			width : 250,
-			offset: (250 + 20) * (self.contactsCount - 1),
+			offset: (250 + 20) * (self.sessionsCount - 1),
 			messageSent: function(id, author, msg) {
 				self.sendMessage(cid, msg);
 				this.boxManager.addMsg(self.settings.nickname, msg);
 	    	},
 	    	boxClosed: function(id) {
-	    		
+	    		self.sessionsCount--;
 	    	}
 		});
 	};
