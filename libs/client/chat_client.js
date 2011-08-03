@@ -27,8 +27,7 @@ var ChatClient = function(config) {
 		if(typeof config != 'undefined' && config !== null) {
 			self.settings = self.mergeProperties(self.settings, config);
 		}
-		console.log(self.settings);
-				
+		
 		self.socket = io.connect( self.settings.host + '/' + self.settings.channel, {port: self.settings.port, 'connect timout': 2000} );
 		
 		// requisita contatos

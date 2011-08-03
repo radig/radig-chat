@@ -1,4 +1,4 @@
-var ChatServer = exports.ChatServer = function() {
+var ChatServer = exports.ChatServer = function(config) {
 	this.settings = {
 		port: 8060,
 		contactTimout: 3000, // 3 seg
@@ -30,6 +30,10 @@ var ChatServer = exports.ChatServer = function() {
 	
 	this.init = function() {
 		var self = this;
+		
+		if(typeof config != 'undefined' && config !== null) {
+			self.settings = self.mergeProperties(self.settings, config);
+		}
 		
 		self.sanitize = require('validator').sanitize;
 		
@@ -198,5 +202,26 @@ var ChatServer = exports.ChatServer = function() {
 		}
 		
 		return true;
+	};
+	
+	/**
+	 * Mescla recursivamente os atributos de dois objetos
+	 */
+	this.mergeProperties = function(destination, source) {
+		var self = this;
+		
+		for (var property in source) {
+			if (source.hasOwnProperty(property) && (source[property] != '' && source[property] !== null)) {
+				
+				if(typeof source[property] == 'object' && source[property] !== null) {
+					destination[property] = self.mergeProperties(destination[property], source[property]);
+				}
+				else {
+					destination[property] = source[property];
+				}
+			}
+		}
+		
+		return destination;
 	};
 };
