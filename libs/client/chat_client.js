@@ -1,5 +1,4 @@
-var ChatClient = function() {
-	
+var ChatClient = function(config) {
 	this.settings = {
 		id: null,	
 		nickname: '',
@@ -7,6 +6,7 @@ var ChatClient = function() {
 		channel: 'chat',
 		port: 8060,
 		contactList: {
+			wrapper: '#contact-list',
 			classes: 'contact-list-contact',
 			prepend: '',
 			pospend: ''
@@ -24,7 +24,12 @@ var ChatClient = function() {
 	this.connect = function() {
 		var self = this;
 		
-		self.socket = io.connect( config.host + '/' + config.channel, {port: config.port, 'connect timout': 2000} );
+		if(typeof config != 'undefined' && config !== null) {
+			self.settings = self.mergeProperties(self.settings, config);
+		}
+		console.log(self.settings);
+				
+		self.socket = io.connect( self.settings.host + '/' + self.settings.channel, {port: self.settings.port, 'connect timout': 2000} );
 		
 		// requisita contatos
 		self.socket.emit('contact-list request');
@@ -70,17 +75,27 @@ var ChatClient = function() {
 		});
 	};
 	
+	/**
+	 * Cria um link semi-formatado cotendo o nome do contato
+	 * e a identificação local dele.
+	 * 
+	 * Associa o evento clique com a ação de abrir um novo chat
+	 */
 	this.addContact = function(contact) {
 		var self = this;
+		var config = self.settings.contactList;
 		
 		self.contacts[contact.id] = contact;
 		
-		$('body').append('<a href="#' + contact.id + '" class="chat-contact">' + contact.name + '</a>');
-		bt = $('a[href=#' + contact.id + ']');
+		var link = '<a href="#' + contact.id + '" class="jsContactLink ' + config.classes + '">'
+					+ config.prepend
+					+ contact.name
+					+ config.pospend
+					+ '</a>';
 		
-		bt.button();
+		$(self.settings.contactList.wrapper).append(link);
 		
-		bt.bind('click', function(e) {
+		$('.jsContactLink').bind('click', function(event) {
 			key = String($(this).attr('href')).substring(1);
 			
 			self.socket.emit('chat request', self.contacts[key]);
@@ -119,5 +134,26 @@ var ChatClient = function() {
 	
 	this.sendMessage = function(id, message) {
 		this.socket.emit('chat message', id, message);
+	};
+	
+	/**
+	 * Mescla recursivamente os atributos de dois objetos
+	 */
+	this.mergeProperties = function(destination, source) {
+		var self = this;
+		
+		for (var property in source) {
+			if (source.hasOwnProperty(property) && (source[property] != '' && source[property] !== null)) {
+				
+				if(typeof source[property] == 'object' && source[property] !== null) {
+					destination[property] = self.mergeProperties(destination[property], source[property]);
+				}
+				else {
+					destination[property] = source[property];
+				}
+			}
+		}
+		
+		return destination;
 	};
 };

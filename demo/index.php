@@ -25,11 +25,13 @@
 			nickname: 'Demo',
 			host: '127.0.0.1',
 			channel: 'chat',
-			port: 8060
+			port: 8060,
+			contactList: {
+				wrapper: '#contacts'
+			}
 		};
 
-		var cc = new ChatClient();
-		cc.settings = config;
+		var cc = new ChatClient(config);
 
 		// Inicia chat cliente
 		cc.connect();
