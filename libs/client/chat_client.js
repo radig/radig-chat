@@ -86,13 +86,15 @@ var ChatClient = function(config) {
 		
 		self.contacts[contact.id] = contact;
 		
-		var link = '<a href="#' + contact.id + '" class="jsContactLink ' + config.classes + '">'
-					+ config.prepend
+		var link = config.prepend
+					+ '<a href="#' + contact.id + '" class="jsContactLink ' + config.classes + '">'
 					+ contact.name
-					+ config.pospend
-					+ '</a>';
+					+ '</a>'
+					+ config.pospend;
 		
 		$(self.settings.contactList.wrapper).append(link);
+		
+		$(self.settings.contactList.wrapper).trigger('contact_list_add', contact.id);
 		
 		$('.jsContactLink').bind('click', function(event) {
 			key = String($(this).attr('href')).substring(1);
