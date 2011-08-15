@@ -39,6 +39,13 @@ var ChatServer = exports.ChatServer = function(config) {
 		
 		self.io = require('socket.io').listen(self.settings.port);
 		
+		self.io.configure('production', function(){
+			self.io.enable('browser client minification');
+			self.io.enable('browser client etag');
+			self.io.set('log level', 1);
+			self.io.set('transports', ['websocket', 'flashsocket', 'xhr-polling', 'jsonp-polling']);
+		});
+		
 		ChatMessage = require('./models/chat_message').ChatMessage;
 		
 		self.messages = new ChatMessage();

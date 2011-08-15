@@ -1,6 +1,6 @@
 var ChatClient = function(config) {
 	this.settings = {
-		id: null,	
+		id: null,
 		nickname: '',
 		host: '127.0.0.1',
 		channel: 'chat',
