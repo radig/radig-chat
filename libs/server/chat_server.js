@@ -60,6 +60,10 @@ var ChatServer = exports.ChatServer = function(config) {
 	this.start = function() {
 		var self = this;
 		
+		if(self.messages === null || self.io === null) {
+			self.init();
+		}
+		
 		self.io.of('/chat').on('connection', function(socket) {
 			
 			socket.on('identification', function(info) {
