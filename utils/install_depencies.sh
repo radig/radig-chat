@@ -14,6 +14,8 @@ clear
 echo "Instalando módulo Validator (https://github.com/chriso/node-validator)......."
 npm install validator
 clear
+echo "Instalando módulo Hashlib (https://github.com/brainfucker/hashlib)..........."
+npm install hashlib
 echo "-----------------------------------------------------------------------------"
 echo "Dependências instaladas"
 echo "-----------------------------------------------------------------------------"

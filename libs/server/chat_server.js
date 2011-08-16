@@ -16,6 +16,9 @@ var ChatServer = exports.ChatServer = function(config) {
 	// lib para "limpeza" das entradas
 	this.sanitize = null;
 	
+	// lib para gerar hashs
+	this.hashlib = null;
+	
 	// persistência das mensagens
 	this.messages = null;
 	
@@ -28,6 +31,9 @@ var ChatServer = exports.ChatServer = function(config) {
 	// sessões de chat abertas
 	this.sessions = {};
 	
+	// usuário corrente está autorizado?
+	this.authorized = false;
+	
 	this.init = function() {
 		var self = this;
 		
@@ -36,6 +42,8 @@ var ChatServer = exports.ChatServer = function(config) {
 		}
 		
 		self.sanitize = require('validator').sanitize;
+		
+		self.hashlib = require('hashlib');
 		
 		self.io = require('socket.io').listen(self.settings.port);
 		
@@ -48,13 +56,7 @@ var ChatServer = exports.ChatServer = function(config) {
 		
 		ChatMessage = require('./models/chat_message').ChatMessage;
 		
-		self.messages = new ChatMessage();
-		
-		self.messages.settings.db.database = self.settings.persistence.database;
-		self.messages.settings.db.username = self.settings.persistence.username;
-		self.messages.settings.db.password = self.settings.persistence.password;
-		
-		self.messages.connect();
+		self.messages = new ChatMessage({db: self.settings.persistence});
 	};
 	
 	this.start = function() {
@@ -70,11 +72,15 @@ var ChatServer = exports.ChatServer = function(config) {
 				info.id = self.sanitize(info.id).xss();
 				info.name = self.sanitize(info.name).xss();
 				
-				if(self.authorize(info) === false) {
-					// força desconexão
-					socket.disconnect();
-					return;
-				}
+				self.authorize(info);
+				
+				setTimeout(function() {
+					// se após timeout não estiver autorizado
+					if(self.authorized === false) {
+						// força desconexão
+						socket.disconnect();
+					}
+				}, 500);
 				
 				// caso o contato esteja na fila de timouts, o remove dela
 				if(typeof self.refreshing[socket.id] != 'undefined') {
@@ -88,31 +94,77 @@ var ChatServer = exports.ChatServer = function(config) {
 					
 					self.io.of('/chat').emit('contact-list join', info);
 				}
+				// senão atualiza seu socket
+				else {
+					self.online[info.id].socketId = socket.id;
+
+					// re-abre cada um dos chats do qual pertença
+					for(cid in self.sessions) {
+						
+						for(i in self.sessions[cid].participants) {
+							
+							if(self.sessions[cid].participants[i].id == info.id) {
+								socket.emit('new chat id', cid);
+								socket.emit('open chat', cid, self.sessions[cid].participants);
+								self.sendRecentHistory(cid, socket);
+							}
+						}
+					}
+				}
 				
 				socket.set('me', info);
 			});
 			
 			// requisição de conexão
 			socket.on('chat request', function(another) {
-				// cria uma sessão de chat e um id para a mesma
-				cid = '_' + new Date().getTime();
 				
-				self.sessions[cid] = {participants: {}};
-				
-				// Adiciona contato à lista de participantes do chat
-				self.sessions[cid].participants[another.id] = {id: another.id, name: another.name};
-				
-				// Adiciona a sí na lista de participantes do chat
+				// Recupera informações de sí
 				socket.get('me', function(err, info) {
-					self.sessions[cid].participants[info.id] = {id: info.id, name: info.name};
+					
+					// monta uma string contendo a sessao de ambos os contatos, concatenadas
+					// em ordem crescente pelo username
+					id = info.id;
+					
+					if(info.name > another.name) {
+						id += another.id;
+					}
+					else {
+						id = another.id + id;
+					}
+					
+					// cria o id para a sessão
+					cid = '_' + self.hashlib.md5(id);
+					
+					// caso a sessão ainda não exista, cria uma
+					if(typeof self.sessions[cid] == 'undefined') {
+						self.sessions[cid] = {participants: {}};
+						
+						// Adiciona contato à lista de participantes do chat
+						self.sessions[cid].participants[another.id] = {id: another.id, name: another.name};
+						
+						// Adiciona a sí na lista de participantes do chat
+						self.sessions[cid].participants[info.id] = {id: info.id, name: info.name};
+						
+						socket.emit('new chat id', cid);
+						self.io.of('/chat').sockets[self.online[another.id].socketId].emit('new chat id', cid);
+						
+						// avisa a outra parte que ele deve abrir uma janela de chat
+						socket.emit('open chat', cid, self.sessions[cid].participants);
+						
+						self.io.of('/chat').sockets[self.online[another.id].socketId].emit('open chat', cid, self.sessions[cid].participants);
+					}
+					// caso contrário
+					else {
+						var to = null;
+						
+						for(i in self.sessions[cid].participants) {
+							to = self.online[self.sessions[cid].participants[i].id].socketId;
+							
+							self.io.of('/chat').sockets[to].emit('open chat', cid, self.sessions[cid].participants);
+						}
+					}
+						
 				});
-				
-				socket.emit('new chat id', cid);
-				self.io.of('/chat').sockets[self.online[another.id].socketId].emit('new chat id', cid);
-				
-				// avisa a outra parte que ele deve abrir uma janela de chat
-				socket.emit('open chat', cid, self.sessions[cid].participants);
-				self.io.of('/chat').sockets[self.online[another.id].socketId].emit('open chat', cid, self.sessions[cid].participants);
 			});
 			
 			socket.on('chat opened', function(chatId) {
@@ -176,6 +228,20 @@ var ChatServer = exports.ChatServer = function(config) {
 	};
 	
 	/**
+	 * Envia histórico recente de mensagem
+	 */
+	this.sendRecentHistory = function(chatId, client) {
+		var self = this;
+		
+		self.messages.getLatests(chatId, 5, function(err, msg) {
+				if(msg != null) {
+					client.emit('user message', chatId, {from: msg.from.name, content: msg.content});
+				}
+			}
+		);
+	};
+	
+	/**
 	 * Limpa a lista de contatos, removendo os inativos (desconectados)
 	 */
 	this.clenaupContacts = function() {
@@ -209,10 +275,10 @@ var ChatServer = exports.ChatServer = function(config) {
 	this.authorize = function(user) {
 		
 		if(this.settings.authorization !== null) {
-			return this.settings.authorization(user);
+			this.authorized = this.settings.authorization(user);
 		}
 		
-		return true;
+		this.authorized = true;
 	};
 	
 	/**

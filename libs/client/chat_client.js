@@ -55,17 +55,19 @@ var ChatClient = function(config) {
 
 		// pedido de abertura de nova janela
 		self.socket.on('open chat', function(id, contacts) {
-			winTitle = "";
+			var winTitle = "";
 			
-			for(i in self.contacts) {
-				self.sessions[id].participants.push(self.contacts[i]);
+			if(typeof self.sessions[id] == 'undefined') {
+				for(i in self.contacts) {
+					self.sessions[id].participants.push(self.contacts[i]);
+					
+					if(self.settings.id != self.contacts[i].id)
+						winTitle += self.contacts[i].name + " ";
+				}
 				
-				if(self.settings.id != self.contacts[i].id)
-					winTitle += self.contacts[i].name + " ";
+				self.sessionsCount++;
+				self.addChatBox(id, winTitle);
 			}
-			
-			self.sessionsCount++;
-			self.addChatBox(id, winTitle);
 		});
 		
 		// mensagem vinda

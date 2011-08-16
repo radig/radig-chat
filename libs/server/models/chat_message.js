@@ -29,7 +29,7 @@ var Db = require('mongodb').Db,
  * informado (normalmente a sessão corrente).
  * 
  */
-var ChatMessage = exports.ChatMessage = function() {
+var ChatMessage = exports.ChatMessage = function(config) {
 	this.settings = {
 		db: {
 			host: 'localhost',
@@ -78,7 +78,7 @@ var ChatMessage = exports.ChatMessage = function() {
 	 * chat com sessão chatSession.
 	 * 
 	 */
-	this.getLatests = function(chatSession, l) {
+	this.getLatests = function(chatSession, l, c) {
 		var self = this;
 		msgs = null;
 		
@@ -102,11 +102,21 @@ var ChatMessage = exports.ChatMessage = function() {
 				return false;
 			}
 			
-			collection.find({'chatSession': chatSession, 'to': to}, function(err, messages) {
-				if(messages != 'undefined') {
-					msgs = messages;
-				}
-			}).limit(l);
+			collection.count({'chatSession': chatSession}, function(err, count) {
+				var skip = 0;
+				
+				if(count - 1 > l)
+					skip = count - l - 1;
+				
+				console.log(count);
+				collection.find({'chatSession': chatSession}, {'skip' : skip, 'sort': [['date', 1]]}, function(err, cursor) {
+					if(typeof cursor != 'undefined') {
+						cursor.each(function(err, doc) {
+							c(err, doc);
+						});
+					};
+				});
+			});
 		});
 		
 		return msgs;
@@ -154,4 +164,32 @@ var ChatMessage = exports.ChatMessage = function() {
 		
 		return true;
 	};
+	
+	/**
+	 * Mescla recursivamente os atributos de dois objetos
+	 */
+	this.mergeProperties = function(destination, source) {
+		var self = this;
+		
+		for (var property in source) {
+			if (source.hasOwnProperty(property) && (source[property] != '' && source[property] !== null)) {
+				
+				if(typeof source[property] == 'object' && source[property] !== null) {
+					destination[property] = self.mergeProperties(destination[property], source[property]);
+				}
+				else {
+					destination[property] = source[property];
+				}
+			}
+		}
+		
+		return destination;
+	};
+	
+	
+	if(typeof config != 'undefined' && config !== null) {
+		this.settings = this.mergeProperties(this.settings, config);
+	}
+	
+	this.connect();
 };
