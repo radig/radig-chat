@@ -57,7 +57,7 @@ var ChatClient = function(config) {
 		self.socket.on('open chat', function(id, contacts) {
 			var winTitle = "";
 			
-			if(typeof self.sessions[id] == 'undefined') {
+			if(typeof self.sessions[id] != 'undefined' && $('#chat_' + id).length == 0) {
 				for(i in self.contacts) {
 					self.sessions[id].participants.push(self.contacts[i]);
 					
