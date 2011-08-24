@@ -16,6 +16,9 @@ npm install validator
 clear
 echo "Instalando módulo Hashlib (https://github.com/brainfucker/hashlib)..........."
 npm install hashlib
+clear
+echo "Instalando módulo Timerjs (https://github.com/minodisk/timer-js)............."
+npm install timerjs
 echo "-----------------------------------------------------------------------------"
 echo "Dependências instaladas"
 echo "-----------------------------------------------------------------------------"
