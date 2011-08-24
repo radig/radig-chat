@@ -216,6 +216,9 @@ var ChatServer = exports.ChatServer = function(config) {
 				});
 			});
 		});
+		
+		// invoca rotina para limpar lista de contatos constantemente
+		this.clenaupContacts();
 	};
 	
 	/**
