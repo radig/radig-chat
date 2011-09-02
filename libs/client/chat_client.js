@@ -35,7 +35,9 @@ var ChatClient = function(config) {
 		
 		// trata entrada de novo contato
 		self.socket.on('contact-list join', function(contact) {
-			self.addContact(contact);
+			if(contact.id != self.settings.id) {
+				self.addContact(contact);
+			}
 		});
 
 		// saída de um contato
@@ -60,6 +62,9 @@ var ChatClient = function(config) {
 			if(typeof self.sessions[id] != 'undefined' && $('#chat_' + id).length == 0) {
 				for(i in self.contacts) {
 					self.sessions[id].participants.push(self.contacts[i]);
+					
+					if(winTitle.length > 0)
+						winTitle += ",";
 					
 					if(self.settings.id != self.contacts[i].id)
 						winTitle += self.contacts[i].name + " ";
@@ -131,6 +136,8 @@ var ChatClient = function(config) {
 	    	},
 	    	boxClosed: function(id) {
 	    		self.sessionsCount--;
+	    		cid = id.substring(5);
+	    		self.socket.emit('chat close', cid);
 	    	}
 		});
 	};

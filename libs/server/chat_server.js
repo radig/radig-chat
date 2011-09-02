@@ -31,9 +31,6 @@ var ChatServer = exports.ChatServer = function(config) {
 	// sessões de chat abertas
 	this.sessions = {};
 	
-	// usuário corrente está autorizado?
-	this.authorized = false;
-	
 	this.init = function() {
 		var self = this;
 		
@@ -50,8 +47,16 @@ var ChatServer = exports.ChatServer = function(config) {
 		self.io.configure('production', function(){
 			self.io.enable('browser client minification');
 			self.io.enable('browser client etag');
+			self.io.set('flash policy port', 7666);
 			self.io.set('log level', 1);
-			self.io.set('transports', ['websocket', 'flashsocket', 'xhr-polling', 'jsonp-polling']);
+			self.io.set('transports', ['websocket', 'flashsocket', 'htmlfile', 'xhr-polling']);
+		});
+		
+		self.io.configure('development', function(){
+			self.io.enable('browser client minification');
+			self.io.enable('browser client etag');
+			self.io.set('flash policy port', 7666);
+			self.io.set('transports', ['websocket', 'flashsocket']);
 		});
 		
 		ChatMessage = require('./models/chat_message').ChatMessage;
@@ -72,47 +77,46 @@ var ChatServer = exports.ChatServer = function(config) {
 				info.id = self.sanitize(info.id).xss();
 				info.name = self.sanitize(info.name).xss();
 				
-				self.authorize(info);
-				
-				setTimeout(function() {
-					// se após timeout não estiver autorizado
-					if(self.authorized === false) {
+				self.authorize(info, function(authorized) {
+					
+					if(authorized === false) {
 						// força desconexão
 						socket.disconnect();
 					}
-				}, 500);
-				
-				// caso o contato esteja na fila de timouts, o remove dela
-				if(typeof self.refreshing[socket.id] != 'undefined') {
-					delete self.refreshing[socket.id];
-				}
-				
-				// caso o contato ainda não esteja registrado
-				if(typeof self.online[info.id] == 'undefined') {
-					// associa a chave de sessão do usuário com ID socket
-					self.online[info.id] = {socketId: socket.id, name: info.name};
-					
-					self.io.of('/chat').emit('contact-list join', info);
-				}
-				// senão atualiza seu socket
-				else {
-					self.online[info.id].socketId = socket.id;
-
-					// re-abre cada um dos chats do qual pertença
-					for(cid in self.sessions) {
+					else {
+						// caso o contato esteja na fila de timouts, o remove dela
+						if(typeof self.refreshing[socket.id] != 'undefined') {
+							delete self.refreshing[socket.id];
+						}
 						
-						for(i in self.sessions[cid].participants) {
+						// caso o contato ainda não esteja registrado
+						if(typeof self.online[info.id] == 'undefined') {
+							// associa a chave de sessão do usuário com ID socket
+							self.online[info.id] = {socketId: socket.id, name: info.name};
 							
-							if(self.sessions[cid].participants[i].id == info.id) {
-								socket.emit('new chat id', cid);
-								socket.emit('open chat', cid, self.sessions[cid].participants);
-								self.sendRecentHistory(cid, socket);
+							self.io.of('/chat').emit('contact-list join', info);
+						}
+						// senão atualiza seu socket
+						else {
+							self.online[info.id].socketId = socket.id;
+							
+							// re-abre cada um dos chats do qual pertença
+							for(cid in self.sessions) {
+								
+								for(i in self.sessions[cid].participants) {
+									
+									if(self.sessions[cid].participants[i].id == info.id && self.sessions[cid].participants[i].autoReOpen == true) {
+										socket.emit('new chat id', cid);
+										socket.emit('open chat', cid, self.sessions[cid].participants);
+										self.sendRecentHistory(cid, socket);
+									}
+								}
 							}
 						}
+						
+						socket.set('me', info);
 					}
-				}
-				
-				socket.set('me', info);
+				});
 			});
 			
 			// requisição de conexão
@@ -140,10 +144,10 @@ var ChatServer = exports.ChatServer = function(config) {
 						self.sessions[cid] = {participants: {}};
 						
 						// Adiciona contato à lista de participantes do chat
-						self.sessions[cid].participants[another.id] = {id: another.id, name: another.name};
+						self.sessions[cid].participants[another.id] = {id: another.id, name: another.name, autoReOpen: true};
 						
 						// Adiciona a sí na lista de participantes do chat
-						self.sessions[cid].participants[info.id] = {id: info.id, name: info.name};
+						self.sessions[cid].participants[info.id] = {id: info.id, name: info.name, autoReOpen: true};
 						
 						socket.emit('new chat id', cid);
 						self.io.of('/chat').sockets[self.online[another.id].socketId].emit('new chat id', cid);
@@ -167,6 +171,7 @@ var ChatServer = exports.ChatServer = function(config) {
 				});
 			});
 			
+			// confirmação de janela de chat aberta
 			socket.on('chat opened', function(chatId) {
 				chatId = self.sanitize(chatId).xss();
 				
@@ -176,6 +181,17 @@ var ChatServer = exports.ChatServer = function(config) {
 						self.io.of('/chat').sockets[to].emit('chat ready', chatId);
 					}
 				}
+			});
+			
+			// solicitação para fechar janela de chat (não reabri-la automaticamente)
+			socket.on('chat close', function(chatId) {
+				chatId = self.sanitize(chatId).xss();
+				
+				socket.get('me', function(err, info) {
+					if(typeof self.sessions[chatId].participants[info.id].autoReOpen == 'undefined' || self.sessions[chatId].participants[info.id].autoReOpen === true) {
+						self.sessions[chatId].participants[info.id].autoReOpen = false;
+					}
+				});
 			});
 			
 			// mensagem recebida
@@ -207,8 +223,7 @@ var ChatServer = exports.ChatServer = function(config) {
 			});
 			
 			// quando o cliente é desconectado, o servidor tem de avisar a outra parte
-			socket.on('disconnect', function() {
-				
+			socket.on('disconnect', function() {				
 				socket.get('me', function (err, info) {
 					if(info !== null) {
 						self.refreshing[info.id] = new Date().getTime();
@@ -254,11 +269,11 @@ var ChatServer = exports.ChatServer = function(config) {
 		var timer = new Timer(2000);
 
 		timer.addListener('timer', function () {
+			
 			var current = new Date().getTime();
 			var init = 0;
 			
 			for(i in self.refreshing) {
-				
 				init = self.refreshing[i];
 				
 				if(init + self.settings.contactTimout >= current) {
@@ -269,19 +284,25 @@ var ChatServer = exports.ChatServer = function(config) {
 				}
 			}
 		});
+		
+		timer.start();
 	};
 	
 	/**
 	 * Verifica se o usuário conectado possuí permissão para
 	 * usar o chat
 	 */
-	this.authorize = function(user) {
+	this.authorize = function(user, callback) {
 		
 		if(this.settings.authorization !== null) {
 			this.authorized = this.settings.authorization(user);
 		}
 		
 		this.authorized = true;
+		
+		if(typeof callback != 'undefined') {
+			callback(user);
+		}
 	};
 	
 	/**
