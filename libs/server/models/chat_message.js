@@ -17,9 +17,7 @@
  * Utiliza o módulo mongodb-native para conexão (instalar via NPM).
  */ 
 var Db = require('mongodb').Db,
-	Connection = require('mongodb').Connection,
-	Server = require('mongodb').Server,
-	BSON = require('mongodb').BSONNative;
+	Server = require('mongodb').Server;
 
 /**
  * Classe que representa uma mensagem de chat
@@ -54,7 +52,7 @@ var ChatMessage = exports.ChatMessage = function(config) {
 	this.connect = function() {
 		var self = this;
 		
-		self.conn = new Db(self.settings.db.database, new Server(self.settings.db.host, self.settings.db.port, {}), {native_parser:true});
+		self.conn = new Db(self.settings.db.database, new Server(self.settings.db.host, self.settings.db.port, {}));
 
 		self.conn.open(function(err, db) {
 			if(db === null) {
