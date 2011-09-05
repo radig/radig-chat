@@ -2,6 +2,19 @@ h1. Chat estilo GMail/Facebook feito em Node.js + Socket.io + jQuery + MongoDB
 
 h2. Apresentação
 
+Sistema de chat entre duas pessoas estilo chat do GMail/Facebook, orientado a eventos
+e contruído utilizando Node.js + MongoDB no lado servidor e jQuery + jQuery UI + jQuery UI ChatBox
+do lado cliente, ligando tudo isso com a biblioteca Socket.io para comunicação bidirecional
+entre browser e servidor.
+
+Permite a verificação de usuários logados através de funções definidas pelo usuário (podendo
+ser integrado a outros sistemas, escritos em virtualmente qualquer linguagem de programação).
+
+Através de eventos é possível gerenciar lista de contatos ativos (semelhante aos contatos online
+do GTalk/Facebook).
+
+Com pouca altearação o chat pode incluir suporte à conversas em grupo.
+
 h2. Instruções de uso
 
 h2. Copyright
@@ -21,4 +34,3 @@ os créditos originais.
 h2. @TODO
 
 * Documentação
-* Restrição de usuários logados
