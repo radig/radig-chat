@@ -31,6 +31,37 @@ var ChatServer = exports.ChatServer = function(config) {
 	// sessões de chat abertas
 	this.sessions = {};
 	
+	/**
+	 * Verifica se o usuário conectado possuí permissão para
+	 * usar o chat
+	 */
+	this.authorize = function(user, callback) {
+		if(this.settings.authorization !== null && typeof callback != 'undefined') {
+			this.settings.authorization(user, callback);
+		}
+	};
+	
+	/**
+	 * Mescla recursivamente os atributos de dois objetos
+	 */
+	this.mergeProperties = function(destination, source) {
+		var self = this;
+		
+		for (var property in source) {
+			if (source.hasOwnProperty(property) && (source[property] != '' && source[property] !== null)) {
+				
+				if(typeof source[property] == 'object' && source[property] !== null) {
+					destination[property] = self.mergeProperties(destination[property], source[property]);
+				}
+				else {
+					destination[property] = source[property];
+				}
+			}
+		}
+		
+		return destination;
+	};
+	
 	this.init = function() {
 		var self = this;
 		
@@ -286,43 +317,5 @@ var ChatServer = exports.ChatServer = function(config) {
 		});
 		
 		timer.start();
-	};
-	
-	/**
-	 * Verifica se o usuário conectado possuí permissão para
-	 * usar o chat
-	 */
-	this.authorize = function(user, callback) {
-		
-		if(this.settings.authorization !== null) {
-			this.authorized = this.settings.authorization(user);
-		}
-		
-		this.authorized = true;
-		
-		if(typeof callback != 'undefined') {
-			callback(user);
-		}
-	};
-	
-	/**
-	 * Mescla recursivamente os atributos de dois objetos
-	 */
-	this.mergeProperties = function(destination, source) {
-		var self = this;
-		
-		for (var property in source) {
-			if (source.hasOwnProperty(property) && (source[property] != '' && source[property] !== null)) {
-				
-				if(typeof source[property] == 'object' && source[property] !== null) {
-					destination[property] = self.mergeProperties(destination[property], source[property]);
-				}
-				else {
-					destination[property] = source[property];
-				}
-			}
-		}
-		
-		return destination;
 	};
 };
