@@ -13,5 +13,3 @@ var config = {
 var cs = new ChatServer(config);
 
 cs.init();
-
-cs.start();

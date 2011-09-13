@@ -62,46 +62,42 @@ var ChatServer = exports.ChatServer = function(config) {
 		return destination;
 	};
 	
-	this.init = function() {
-		var self = this;
-		
-		if(typeof config != 'undefined' && config !== null) {
-			self.settings = self.mergeProperties(self.settings, config);
-		}
-		
-		self.sanitize = require('validator').sanitize;
-		
-		self.hashlib = require('hashlib');
-		
-		self.io = require('socket.io').listen(self.settings.port);
-		
-		self.io.configure('production', function(){
-			self.io.enable('browser client minification');
-			self.io.enable('browser client etag');
-			self.io.set('flash policy port', 7666);
-			self.io.set('log level', 1);
-			self.io.set('transports', ['websocket', 'flashsocket', 'htmlfile', 'xhr-polling']);
-		});
-		
-		self.io.configure('development', function(){
-			self.io.enable('browser client minification');
-			self.io.enable('browser client etag');
-			self.io.set('flash policy port', 7666);
-			self.io.set('transports', ['websocket', 'flashsocket']);
-		});
-		
-		ChatMessage = require('./models/chat_message').ChatMessage;
-		
-		self.messages = new ChatMessage({db: self.settings.persistence});
-	};
-	
 	this.start = function() {
 		var self = this;
 		
+		// inicializa parâmetros do servidor, caso ainda não estejam definido
 		if(self.messages === null || self.io === null) {
-			self.init();
+			if(typeof config != 'undefined' && config !== null) {
+				self.settings = self.mergeProperties(self.settings, config);
+			}
+			
+			self.sanitize = require('validator').sanitize;
+			
+			self.hashlib = require('hashlib');
+			
+			self.io = require('socket.io').listen(self.settings.port);
+			
+			self.io.configure('production', function(){
+				self.io.enable('browser client minification');
+				self.io.enable('browser client etag');
+				self.io.set('flash policy port', 7666);
+				self.io.set('log level', 1);
+				self.io.set('transports', ['websocket', 'flashsocket', 'htmlfile', 'xhr-polling']);
+			});
+			
+			self.io.configure('development', function(){
+				self.io.enable('browser client minification');
+				self.io.enable('browser client etag');
+				self.io.set('flash policy port', 7666);
+				self.io.set('transports', ['websocket', 'flashsocket']);
+			});
+			
+			ChatMessage = require('./models/chat_message').ChatMessage;
+			
+			self.messages = new ChatMessage({db: self.settings.persistence});
 		}
 		
+		// inicia servidor no namespace chat
 		self.io.of('/chat').on('connection', function(socket) {
 			
 			socket.on('identification', function(info) {
@@ -188,15 +184,9 @@ var ChatServer = exports.ChatServer = function(config) {
 						
 						self.io.of('/chat').sockets[self.online[another.id].socketId].emit('open chat', cid, self.sessions[cid].participants);
 					}
-					// caso contrário
+					// caso contrário, apenas reabre janela de chat para si
 					else {
-						var to = null;
-						
-						for(i in self.sessions[cid].participants) {
-							to = self.online[self.sessions[cid].participants[i].id].socketId;
-							
-							self.io.of('/chat').sockets[to].emit('open chat', cid, self.sessions[cid].participants);
-						}
+						socket.emit('open chat', cid, self.sessions[cid].participants);
 					}
 						
 				});
@@ -317,5 +307,9 @@ var ChatServer = exports.ChatServer = function(config) {
 		});
 		
 		timer.start();
+	};
+	
+	this.stop = function() {
+		this.io.server.close();
 	};
 };
