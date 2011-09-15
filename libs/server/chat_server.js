@@ -136,31 +136,6 @@ var ChatServer = exports.ChatServer = function(config) {
 							//console.log("Opa, o cliente voltou");
 							self.online[info.id].socketId = socket.id;
 							
-							var validSession;
-							
-							// avisa cada um dos contatos que o cliente voltou
-							for(cid in self.sessions) {
-								validSession = false;
-								
-								for(i in self.sessions[cid].participants) {
-									if(self.sessions[cid].participants[i].id == info.id) {
-										validSession = true;
-									}
-								}
-								
-								if(validSession === true) {
-									for(i in self.sessions[cid].participants) {
-										if(self.sessions[cid].participants[i].id != info.id) {
-											to = self.online[self.sessions[chatId].participants[i].id].socketId;
-											
-											if(typeof self.io.of('/chat').sockets[to] != 'undefined') {
-												self.io.of('/chat').sockets[to].emit('chat status', cid, 'contact online');
-											}
-										}
-									}
-								}
-							}
-							
 							// re-abre cada um dos chats do qual pertença
 							for(cid in self.sessions) {
 								
@@ -170,6 +145,31 @@ var ChatServer = exports.ChatServer = function(config) {
 										socket.emit('new chat id', cid);
 										socket.emit('open chat', cid, self.sessions[cid].participants);
 										self.sendRecentHistory(cid, socket);
+									}
+								}
+							}
+						}
+						
+						var validSession;
+						// avisa cada um dos contatos que o cliente voltou (caso ainda haja sessão aberta)
+						for(cid in self.sessions) {
+							validSession = false;
+							
+							for(i in self.sessions[cid].participants) {
+								if(self.sessions[cid].participants[i].id == info.id) {
+									validSession = true;
+								}
+							}
+							
+							if(validSession === true) {
+								for(i in self.sessions[cid].participants) {
+									if(self.sessions[cid].participants[i].id != info.id && (typeof self.online[self.sessions[cid].participants[i].id] != 'undefined')) {
+										//console.log(self.online[self.sessions[cid].participants[i].id]);
+										to = self.online[self.sessions[cid].participants[i].id].socketId;
+										
+										if(typeof self.io.of('/chat').sockets[to] != 'undefined') {
+											self.io.of('/chat').sockets[to].emit('chat status', cid, 'contact online');
+										}
 									}
 								}
 							}
@@ -342,7 +342,7 @@ var ChatServer = exports.ChatServer = function(config) {
 	this.hasReturned = function(clientId) {
 		var self = this;
 		
-		self.refreshing[clientId].addListener('timerComplete', function() {
+		self.refreshing[clientId].addListener('timer', function() {
 			// se após o timout o cliente não tiver retornado, faz sua exclusão
 			if(typeof self.refreshing[clientId] != 'undefined') {
 				//console.log("Removendo cliente");
@@ -364,7 +364,7 @@ var ChatServer = exports.ChatServer = function(config) {
 					if(validSession === true) {
 						for(i in self.sessions[cid].participants) {
 							if(self.sessions[cid].participants[i].id != clientId) {
-								to = self.online[self.sessions[chatId].participants[i].id].socketId;
+								to = self.online[self.sessions[cid].participants[i].id].socketId;
 								
 								if(typeof self.io.of('/chat').sockets[to] != 'undefined') {
 									self.io.of('/chat').sockets[to].emit('chat status', cid, 'contact offline');
