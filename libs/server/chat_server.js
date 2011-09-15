@@ -1,7 +1,9 @@
 var ChatServer = exports.ChatServer = function(config) {
+	var Timer = require('timerjs').Timer;
+	
 	this.settings = {
 		port: 8060,
-		contactTimout: 3000, // 3 seg
+		contactTimout: 5000, // 5 seg
 		persistence: {
 			database: 'default',
 			username: 'user',
@@ -107,17 +109,23 @@ var ChatServer = exports.ChatServer = function(config) {
 				self.authorize(info, function(authorized) {
 					
 					if(authorized === false) {
+						//console.log("Cliente não autorizado");
 						// força desconexão
 						socket.disconnect();
 					}
 					else {
 						// caso o contato esteja na fila de timouts, o remove dela
-						if(typeof self.refreshing[socket.id] != 'undefined') {
-							delete self.refreshing[socket.id];
+						if(typeof self.refreshing[info.id] != 'undefined') {
+							// finaliza timout
+							self.refreshing[info.id].stop();
+							
+							delete self.refreshing[info.id];
+							//console.log("Cliente estava de saída, mas voltou");
 						}
 						
 						// caso o contato ainda não esteja registrado
 						if(typeof self.online[info.id] == 'undefined') {
+							//console.log("Cliente novo na área");
 							// associa a chave de sessão do usuário com ID socket
 							self.online[info.id] = {socketId: socket.id, name: info.name};
 							
@@ -125,6 +133,7 @@ var ChatServer = exports.ChatServer = function(config) {
 						}
 						// senão atualiza seu socket
 						else {
+							//console.log("Opa, o cliente voltou");
 							self.online[info.id].socketId = socket.id;
 							
 							// re-abre cada um dos chats do qual pertença
@@ -184,11 +193,28 @@ var ChatServer = exports.ChatServer = function(config) {
 						
 						self.io.of('/chat').sockets[self.online[another.id].socketId].emit('open chat', cid, self.sessions[cid].participants);
 					}
-					// caso contrário, apenas reabre janela de chat para si
+					// caso contrário, apenas reabre as janelas de chat
 					else {
+						// para si
+						socket.emit('new chat id', cid);
 						socket.emit('open chat', cid, self.sessions[cid].participants);
-					}
+						socket.emit('chat status', cid, 'already exist');
 						
+						self.sessions[cid].participants[info.id].autoReOpen = true;
+						
+						// para os contatos
+						for(i in self.sessions[cid].participants) {
+							to = self.online[self.sessions[cid].participants[i].id].socketId;
+							
+							if(to != socket.id && typeof self.io.of('/chat').sockets[to] != 'undefined') {
+								self.io.of('/chat').sockets[to].emit('new chat id', cid);
+								self.io.of('/chat').sockets[to].emit('open chat', cid, self.sessions[cid].participants);
+							}
+							else if(typeof self.io.of('/chat').sockets[to] == 'undefined') {
+								socket.emit('chat status', 'contact offline');
+							}
+						}
+					}
 				});
 			});
 			
@@ -236,6 +262,12 @@ var ChatServer = exports.ChatServer = function(config) {
 				});
 			});
 			
+			// resposta à requisição do histórico recente de mensagens para uma sessão
+			socket.on('request recent historic', function(chatId) {
+				//console.log('re-enviando historico recente');
+				self.sendRecentHistory(chatId, socket);
+			});
+			
 			// resposta à pedido de lista de contato
 			socket.on('contact-list request', function() {
 				for(i in self.online) {
@@ -247,14 +279,16 @@ var ChatServer = exports.ChatServer = function(config) {
 			socket.on('disconnect', function() {				
 				socket.get('me', function (err, info) {
 					if(info !== null) {
-						self.refreshing[info.id] = new Date().getTime();
+						self.refreshing[info.id] = new Timer(self.settings.contactTimout, 1);
+						
+						self.hasReturned(info.id);
 					}
 				});
 			});
 		});
 		
 		// invoca rotina para limpar lista de contatos constantemente
-		this.clenaupContacts();
+		//this.clenaupContacts();
 	};
 	
 	/**
@@ -280,33 +314,43 @@ var ChatServer = exports.ChatServer = function(config) {
 		);
 	};
 	
-	/**
-	 * Limpa a lista de contatos, removendo os inativos (desconectados)
-	 */
-	this.clenaupContacts = function() {
+	this.hasReturned = function(clientId) {
 		var self = this;
 		
-		var Timer = require('timerjs').Timer;
-		var timer = new Timer(2000);
-
-		timer.addListener('timer', function () {
-			
-			var current = new Date().getTime();
-			var init = 0;
-			
-			for(i in self.refreshing) {
-				init = self.refreshing[i];
+		self.refreshing[clientId].addListener('timerComplete', function() {
+			// se após o timout o cliente não tiver retornado, faz sua exclusão
+			if(typeof self.refreshing[clientId] != 'undefined') {
+				//console.log("Removendo cliente");
 				
-				if(init + self.settings.contactTimout >= current) {
-					self.io.of('/chat').emit('contact-list quit', {id: i});
+				self.io.of('/chat').emit('contact-list quit', {id: clientId});
+				
+				var validSession;
+				
+				// avisa cada um dos contatos que o cliente saiu
+				for(cid in self.sessions) {
+					validSession = false;
 					
-					delete self.online[i];
-					delete self.refreshing[i];
+					for(i in self.sessions[cid].participants) {
+						if(self.sessions[cid].participants[i].id == clientId) {
+							validSession = true;
+						}
+					}
+					
+					if(validSession === true) {
+						for(i in self.sessions[cid].participants) {
+							if(self.sessions[cid].participants[i].id != clientId) {
+								socket.emit('chat status', cid, 'contact offline');
+							}
+						}
+					}
 				}
+				
+				delete self.online[clientId];
+				delete self.refreshing[clientId];
 			}
 		});
 		
-		timer.start();
+		self.refreshing[clientId].start();
 	};
 	
 	this.stop = function() {

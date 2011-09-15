@@ -52,14 +52,17 @@ var ChatClient = function(config) {
 
 		// criação de nova sessão chat
 		self.socket.on('new chat id', function(id) {
-			self.sessions[id] = {participants: []};
+			if(typeof self.sessions[id] == 'undefined') {
+				self.sessions[id] = {participants: []};
+			}
 		});
 
 		// pedido de abertura de nova janela
 		self.socket.on('open chat', function(id, contacts) {
 			var winTitle = "";
+			var boxWin = $('#chatbox-' + 'chat_' + id);
 			
-			if(typeof self.sessions[id] != 'undefined' && $('#chat_' + id).length == 0) {
+			if(typeof self.sessions[id] != 'undefined' && boxWin.length == 0) {
 				for(i in self.contacts) {
 					self.sessions[id].participants.push(self.contacts[i]);
 					
@@ -73,11 +76,37 @@ var ChatClient = function(config) {
 				self.sessionsCount++;
 				self.addChatBox(id, winTitle);
 			}
+			else if(boxWin.length > 0) {
+				boxWin.show();
+			}
+			
 		});
 		
 		// mensagem vinda
 		self.socket.on('user message', function(id, msg) {
 			$("#chat_" + id).chatbox("option", "boxManager").addMsg(msg.from, msg.content);
+		});
+		
+		
+		self.socket.on('chat status', function(id, status) {
+			// caso esteja abrindo um chat pré-existente
+			if(status == 'already exist') {
+				self.socket.emit('request recent historic', id);
+			}
+			else if(status == 'contact offline') {
+				var input = $('#chatbox-' + 'chat_' + id + ' textarea');
+				
+				if(input.length > 0) {
+					input.prop('disabled', true);
+				}
+			}
+			else if(status == 'contact online') {
+				var input = $('#chatbox-' + 'chat_' + id + ' textarea');
+				
+				if(input.length > 0) {
+					input.prop('disabled', false);
+				}
+			}
 		});
 	};
 	
@@ -90,6 +119,11 @@ var ChatClient = function(config) {
 	this.addContact = function(contact) {
 		var self = this;
 		var config = self.settings.contactList;
+		
+		// Caso usuário já esteja na lista de contatos, ignora-o
+		if(typeof self.contacts[contact.id] != 'undefined') {
+			return;
+		}
 		
 		self.contacts[contact.id] = contact;
 		
