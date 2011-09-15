@@ -205,13 +205,14 @@ var ChatServer = exports.ChatServer = function(config) {
 						// Adiciona a sí na lista de participantes do chat
 						self.sessions[cid].participants[info.id] = {id: info.id, name: info.name, autoReOpen: true};
 						
-						socket.emit('new chat id', cid);
-						self.io.of('/chat').sockets[self.online[another.id].socketId].emit('new chat id', cid);
-						
-						// avisa a outra parte que ele deve abrir uma janela de chat
-						socket.emit('open chat', cid, self.sessions[cid].participants);
-						
-						self.io.of('/chat').sockets[self.online[another.id].socketId].emit('open chat', cid, self.sessions[cid].participants);
+						// avisa à si e a outra parte que ele deve abrir uma janela de chat
+						if((typeof self.online[another.id] != 'undefined') && (typeof self.io.of('/chat').sockets[self.online[another.id].socketId] != 'undefined')) {
+							socket.emit('new chat id', cid);
+							self.io.of('/chat').sockets[self.online[another.id].socketId].emit('new chat id', cid);
+							
+							socket.emit('open chat', cid, self.sessions[cid].participants);
+							self.io.of('/chat').sockets[self.online[another.id].socketId].emit('open chat', cid, self.sessions[cid].participants);
+						}
 					}
 					// caso contrário, apenas reabre as janelas de chat
 					else {
@@ -229,7 +230,7 @@ var ChatServer = exports.ChatServer = function(config) {
 						for(i in self.sessions[cid].participants) {
 							to = self.online[self.sessions[cid].participants[i].id].socketId;
 							
-							if(to != socket.id && typeof self.io.of('/chat').sockets[to] != 'undefined') {
+							if(to != socket.id && (typeof self.io.of('/chat').sockets[to] != 'undefined')) {
 								self.io.of('/chat').sockets[to].emit('new chat id', cid);
 								self.io.of('/chat').sockets[to].emit('open chat', cid, self.sessions[cid].participants);
 							}
@@ -239,18 +240,6 @@ var ChatServer = exports.ChatServer = function(config) {
 						}
 					}
 				});
-			});
-			
-			// confirmação de janela de chat aberta
-			socket.on('chat opened', function(chatId) {
-				chatId = self.sanitize(chatId).xss();
-				
-				for(i in self.sessions[chatId].participants) {
-					to = self.online[self.sessions[chatId].participants[i].id].socketId;
-					if(to != socket.id) {
-						self.io.of('/chat').sockets[to].emit('chat ready', chatId);
-					}
-				}
 			});
 			
 			// solicitação para fechar janela de chat (não reabri-la automaticamente)
@@ -273,11 +262,13 @@ var ChatServer = exports.ChatServer = function(config) {
 					// envia mensagem para todos os participantes
 					for(i in self.sessions[chatId].participants) {
 						
-						to = self.online[self.sessions[chatId].participants[i].id].socketId;
+						if((typeof self.sessions[chatId].participants[i] != 'undefined') && (typeof self.online[self.sessions[chatId].participants[i].id] != 'undefined')) {
+							to = self.online[self.sessions[chatId].participants[i].id].socketId;
 						
-						if(to != socket.id) {
-							self.io.of('/chat').sockets[to].emit('user message', chatId, {from: info.name, content: msg});
-							self.persistMessage(chatId, {from: info, to: self.online[self.sessions[chatId].participants[i].id], when: new Date(), content: msg});
+							if(to != socket.id) {
+								self.io.of('/chat').sockets[to].emit('user message', chatId, {from: info.name, content: msg});
+								self.persistMessage(chatId, {from: info, to: self.online[self.sessions[chatId].participants[i].id], when: new Date(), content: msg});
+							}
 						}
 					}
 				});
@@ -353,7 +344,7 @@ var ChatServer = exports.ChatServer = function(config) {
 					
 					if(validSession === true) {
 						for(i in self.sessions[cid].participants) {
-							if(self.sessions[cid].participants[i].id != clientId) {
+							if(self.sessions[cid].participants[i].id != clientId  && (typeof self.online[self.sessions[cid].participants[i].id] != 'undefined')) {
 								to = self.online[self.sessions[cid].participants[i].id].socketId;
 								
 								if(typeof self.io.of('/chat').sockets[to] != 'undefined') {
