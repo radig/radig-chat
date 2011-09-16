@@ -63,14 +63,14 @@ var ChatClient = function(config) {
 			var boxWin = $('#chatbox-' + 'chat_' + id);
 			
 			if(typeof self.sessions[id] != 'undefined' && boxWin.length == 0) {
-				for(i in self.contacts) {
-					self.sessions[id].participants.push(self.contacts[i]);
+				for(i in contacts) {
+					self.sessions[id].participants.push(contacts[i]);
 					
 					if(winTitle.length > 0)
 						winTitle += ",";
 					
-					if(self.settings.id != self.contacts[i].id)
-						winTitle += self.contacts[i].name + " ";
+					if(self.settings.id != contacts[i].id)
+						winTitle += contacts[i].name + " ";
 				}
 				
 				self.sessionsCount++;
