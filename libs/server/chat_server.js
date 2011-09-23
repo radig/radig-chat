@@ -84,14 +84,14 @@ var ChatServer = exports.ChatServer = function(config) {
 				self.io.enable('browser client etag');
 				self.io.set('flash policy port', 7666);
 				self.io.set('log level', 1);
-				self.io.set('transports', ['websocket', 'flashsocket', 'htmlfile', 'xhr-polling']);
+				self.io.set('transports', ['websocket', 'flashsocket']);
 			});
 			
 			self.io.configure('development', function(){
 				self.io.enable('browser client minification');
 				self.io.enable('browser client etag');
 				self.io.set('flash policy port', 7666);
-				self.io.set('transports', ['websocket', 'flashsocket']);
+				self.io.set('transports', ['flashsocket', 'websocket']);
 			});
 			
 			ChatMessage = require('./models/chat_message').ChatMessage;

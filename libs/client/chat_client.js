@@ -66,11 +66,13 @@ var ChatClient = function(config) {
 				for(i in contacts) {
 					self.sessions[id].participants.push(contacts[i]);
 					
-					if(winTitle.length > 0)
-						winTitle += ",";
+					if(self.settings.id != contacts[i].id) {
+						
+						if(winTitle.length > 0)
+							winTitle += ",";
 					
-					if(self.settings.id != contacts[i].id)
-						winTitle += contacts[i].name + " ";
+						winTitle += self.nameFormat(contacts[i].name) + " ";
+					}
 				}
 				
 				self.sessionsCount++;
@@ -79,18 +81,17 @@ var ChatClient = function(config) {
 			else if(boxWin.length > 0) {
 				boxWin.show();
 			}
-			
 		});
 		
 		// mensagem vinda
 		self.socket.on('user message', function(id, msg) {
-			$("#chat_" + id).chatbox("option", "boxManager").addMsg(msg.from, msg.content);
+			$("#chat_" + id).chatbox("option", "boxManager").addMsg(self.nameFormat(msg.from), msg.content);
 		});
-		
 		
 		self.socket.on('chat status', function(id, status) {
 			// caso esteja abrindo um chat pré-existente
 			if(status == 'already exist') {
+				$("#chat_" + id).text('');
 				self.socket.emit('request recent historic', id);
 			}
 			else if(status == 'contact offline') {
@@ -129,7 +130,7 @@ var ChatClient = function(config) {
 		
 		var link = config.prepend
 					+ '<a href="#' + contact.id + '" class="jsContactLink ' + config.classes + '">'
-					+ contact.name
+					+ self.nameFormat(contact.name)
 					+ '</a>'
 					+ config.pospend;
 		
@@ -152,6 +153,7 @@ var ChatClient = function(config) {
 		delete self.contacts[contact.id];
 		
 		$('a').remove('[href=#' + contact.id + ']');
+		$(self.settings.contactList.wrapper).height('auto');
 	};
 	
 	this.addChatBox = function(cid, title) {
@@ -199,5 +201,19 @@ var ChatClient = function(config) {
 		}
 		
 		return destination;
+	};
+	
+	/**
+	 * Truna nome para não extrapolar título
+	 * na janela de chat
+	 */
+	this.nameFormat = function(name) {
+		var limit = 18;
+		
+		if(name.length > limit) {
+			return name.substr(0, 15) + '...';
+		}
+		
+		return name;
 	};
 };
