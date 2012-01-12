@@ -1,3 +1,23 @@
+/**
+ * Copyright 2011-2012, Radig Soluções em TI. (http://www.radig.com.br)
+ *
+ * Licensed under The MIT License
+ * Redistributions of files must retain the above copyright notice.
+ *
+ * @filesource
+ * @copyright     Copyright 2011-2012, Radig Soluções em TI. (http://www.radig.com.br)
+ * @link          http://www.radig.com.br
+ * @package       radig
+ * @subpackage    radig.chat.client
+ * @license       http://www.opensource.org/licenses/mit-license.php The MIT License
+ */
+
+/**
+ * Classe para controlar as ações do lado cliente
+ * em um sistema de IM (instante messaging) estilo
+ * GTalk
+ * 
+ */
 var ChatClient = function(config) {
 	this.settings = {
 		id: null,
@@ -89,20 +109,22 @@ var ChatClient = function(config) {
 		});
 		
 		self.socket.on('chat status', function(id, status) {
+			var input;
+			
 			// caso esteja abrindo um chat pré-existente
 			if(status == 'already exist') {
 				$("#chat_" + id).text('');
 				self.socket.emit('request recent historic', id);
 			}
 			else if(status == 'contact offline') {
-				var input = $('#chatbox-' + 'chat_' + id + ' textarea');
+				input = $('#chatbox-' + 'chat_' + id + ' textarea');
 				
 				if(input.length > 0) {
 					input.prop('disabled', true);
 				}
 			}
 			else if(status == 'contact online') {
-				var input = $('#chatbox-' + 'chat_' + id + ' textarea');
+				input = $('#chatbox-' + 'chat_' + id + ' textarea');
 				
 				if(input.length > 0) {
 					input.prop('disabled', false);

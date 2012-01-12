@@ -1,4 +1,17 @@
-var ChatServer = exports.ChatServer = function(config) {
+/**
+ * Copyright 2011-2012, Radig Soluções em TI. (http://www.radig.com.br)
+ *
+ * Licensed under The MIT License
+ * Redistributions of files must retain the above copyright notice.
+ *
+ * @filesource
+ * @copyright     Copyright 2011-2012, Radig Soluções em TI. (http://www.radig.com.br)
+ * @link          http://www.radig.com.br
+ * @package       radig
+ * @subpackage    radig.chat.server
+ * @license       http://www.opensource.org/licenses/mit-license.php The MIT License
+ */
+exports.ChatServer = function(config) {
 	var Timer = require('timerjs').Timer;
 	
 	this.settings = {
@@ -38,8 +51,14 @@ var ChatServer = exports.ChatServer = function(config) {
 	 * usar o chat
 	 */
 	this.authorize = function(user, callback) {
+		
+		// Caso haja uma função própria para autorização, faz sua chamada
 		if(this.settings.authorization !== null && typeof callback != 'undefined') {
 			this.settings.authorization(user, callback);
+		}
+		// Caso contrário libera o acesso
+		else {
+			callback(true);
 		}
 	};
 	
@@ -67,15 +86,18 @@ var ChatServer = exports.ChatServer = function(config) {
 	this.start = function() {
 		var self = this;
 		
+		// inicialização/re-inicialização dos atributos da classe
+		self.sanitize = require('validator').sanitize;
+		self.hashlib = require('mhash').hash;
+		self.online = {};
+		self.refreshing = {};
+		self.sessions = {};
+		
 		// inicializa parâmetros do servidor, caso ainda não estejam definido
 		if(self.messages === null || self.io === null) {
 			if(typeof config != 'undefined' && config !== null) {
 				self.settings = self.mergeProperties(self.settings, config);
 			}
-			
-			self.sanitize = require('validator').sanitize;
-			
-			self.hashlib = require('hashlib');
 			
 			self.io = require('socket.io').listen(self.settings.port);
 			
@@ -94,9 +116,9 @@ var ChatServer = exports.ChatServer = function(config) {
 				self.io.set('transports', ['flashsocket', 'websocket']);
 			});
 			
-			ChatMessage = require('./models/chat_message').ChatMessage;
+			ChatMessage = require('./models/ChatMessage').ChatMessage;
 			
-			self.messages = new ChatMessage({db: self.settings.persistence});
+			self.messages = new ChatMessage(self.settings.persistence);
 		}
 		
 		// inicia servidor no namespace chat
@@ -193,7 +215,7 @@ var ChatServer = exports.ChatServer = function(config) {
 					}
 					
 					// cria o id para a sessão
-					cid = '_' + self.hashlib.md5(id);
+					cid = '_' + self.hashlib('md5', id);
 					
 					// caso a sessão ainda não exista, cria uma
 					if(typeof self.sessions[cid] == 'undefined') {
@@ -314,7 +336,7 @@ var ChatServer = exports.ChatServer = function(config) {
 	this.sendRecentHistory = function(chatId, client) {
 		var self = this;
 		
-		self.messages.getLatests(chatId, 5, function(err, msg) {
+		self.messages.getLatests(chatId, 5, function(msg) {
 				if(msg != null) {
 					client.emit('user message', chatId, {from: msg.from.name, content: msg.content});
 				}
@@ -322,6 +344,10 @@ var ChatServer = exports.ChatServer = function(config) {
 		);
 	};
 	
+	/**
+	 * Cliente reconecta ao servidor
+	 * 
+	 */
 	this.hasReturned = function(clientId) {
 		var self = this;
 		
@@ -363,6 +389,10 @@ var ChatServer = exports.ChatServer = function(config) {
 		self.refreshing[clientId].start();
 	};
 	
+	/**
+	 * Finalização do servidor socket
+	 * 
+	 */
 	this.stop = function() {
 		this.io.server.close();
 	};

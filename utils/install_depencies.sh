@@ -14,8 +14,8 @@ clear
 echo "Instalando módulo Validator (https://github.com/chriso/node-validator)......."
 npm install validator
 clear
-echo "Instalando módulo Hashlib (https://github.com/brainfucker/hashlib)..........."
-npm install hashlib
+echo "Instalando módulo Mhash (https://github.com/Sembiance/node-mhash)..........."
+npm install mhash
 clear
 echo "Instalando módulo Timerjs (https://github.com/minodisk/timer-js)............."
 npm install timerjs
