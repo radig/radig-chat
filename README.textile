@@ -33,4 +33,6 @@ os créditos originais.
 
 h2. @TODO
 
-* Documentação
+* *Adicionar testes unitários?*
+* *Documentação*
+* *Criar demo online*

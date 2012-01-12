@@ -1,0 +1,3 @@
+[12-01-2012] 0.1 beta
+ + Refatoração da classe que gerencia as mensagens em contato com MongoDB
+ + Limpeza de código e remoção de código morto

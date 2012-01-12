@@ -11,6 +11,13 @@
  * @subpackage    radig.chat.server
  * @license       http://www.opensource.org/licenses/mit-license.php The MIT License
  */
+
+/**
+ * Classe para fazer toda a lógica de funcionamento
+ * de um sistema de IM (instante messaging) estilo
+ * GTalk
+ * 
+ */
 exports.ChatServer = function(config) {
 	var Timer = require('timerjs').Timer;
 	
