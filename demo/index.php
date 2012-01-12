@@ -11,10 +11,10 @@
 	
 	<link href="../libs/client/chatbox/jquery.ui.chatbox.css" type="text/css" rel="stylesheet">
 	
-	<script src="../libs/client/socket.io.min.js" type="text/javascript"></script>
+	<script src="http://<?php echo $_SERVER['SERVER_ADDR'];?>:8060" type="text/javascript"></script>
 	
-	<script src="../libs/client/jquery.min.js" type="text/javascript"></script>
-	<script src="../libs/client/jquery-ui.min.js" type="text/javascript"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js" type="text/javascript"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/jquery-ui.min.js" type="text/javascript"></script>
 	
 	<script src="../libs/client/chatbox/jquery.ui.chatbox.js" type="text/javascript"></script>
 	<script src="../libs/client/chat_client.js" type="text/javascript"></script>

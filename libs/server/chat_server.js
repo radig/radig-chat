@@ -79,7 +79,7 @@ var ChatServer = exports.ChatServer = function(config) {
 			
 			self.io = require('socket.io').listen(self.settings.port);
 			
-			self.io.configure('production', function(){
+			self.io.configure('production', function() {
 				self.io.enable('browser client minification');
 				self.io.enable('browser client etag');
 				self.io.set('flash policy port', 7666);
