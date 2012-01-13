@@ -190,7 +190,7 @@ var ChatClient = function(config) {
 			offset: (250 + 20) * (self.sessionsCount - 1),
 			messageSent: function(id, author, msg) {
 				self.sendMessage(cid, msg);
-				this.boxManager.addMsg(self.settings.nickname, msg);
+				this.boxManager.addMsg(self.nameFormat(self.settings.nickname), msg);
 	    	},
 	    	boxClosed: function(id) {
 	    		self.sessionsCount--;

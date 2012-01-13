@@ -279,6 +279,12 @@ exports.ChatServer = function(config) {
 				chatId = self.sanitize(chatId).xss();
 				
 				socket.get('me', function(err, info) {
+					if(err) {
+						log('ChatServer: Falha ao recuperar informação do usuário');
+						log(err);
+						return;
+					}
+					
 					if(typeof self.sessions[chatId].participants[info.id].autoReOpen == 'undefined' || self.sessions[chatId].participants[info.id].autoReOpen === true) {
 						self.sessions[chatId].participants[info.id].autoReOpen = false;
 					}
@@ -291,6 +297,12 @@ exports.ChatServer = function(config) {
 				msg = self.sanitize(msg).xss();
 				
 				socket.get('me', function (err, info) {
+					if(err) {
+						log('ChatServer: Falha ao recuperar informação do usuário');
+						log(err);
+						return;
+					}
+					
 					// envia mensagem para todos os participantes
 					for(i in self.sessions[chatId].participants) {
 						
@@ -321,6 +333,12 @@ exports.ChatServer = function(config) {
 			// quando o cliente é desconectado, o servidor tem de avisar a outra parte
 			socket.on('disconnect', function() {				
 				socket.get('me', function (err, info) {
+					if(err) {
+						log('ChatServer: Falha ao recuperar informação do usuário');
+						log(err);
+						return;
+					}
+					
 					if(info !== null) {
 						self.refreshing[info.id] = new Timer(self.settings.contactTimout, 1);
 						
