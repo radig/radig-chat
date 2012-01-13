@@ -25,9 +25,12 @@ exports.ChatServer = function(config) {
 		port: 8060,
 		contactTimout: 5000, // 5 seg
 		persistence: {
+			host: 'localhost',
+			port: 27017,
 			database: 'default',
-			username: 'user',
-			password: 'senha'
+			collection: 'chats',
+			username: false,
+			password: false
 		},
 		authorization: null
 	};
